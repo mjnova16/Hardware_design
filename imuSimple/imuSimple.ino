@@ -9,7 +9,7 @@ Simple_MPU6050 mpu;
 
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   while (!Serial); // wait for Leonardo enumeration, others continue immediately
   mpu.begin();
   mpu.Set_DMP_Output_Rate_Hz(100);           // Set the DMP output rate from 200Hz to 5 Minutes.

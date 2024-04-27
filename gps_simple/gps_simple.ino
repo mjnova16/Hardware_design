@@ -9,7 +9,7 @@ char hor[32];
 
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);//230400
   ss.begin(9800);
 }
 

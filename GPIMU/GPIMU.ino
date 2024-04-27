@@ -14,7 +14,7 @@ unsigned long age;
 #define MPU6050_DEFAULT_ADDRESS     MPU6050_ADDRESS_AD0_LOW
 Simple_MPU6050 mpu;
 //#define spamtimer(t) for (static uint32_t SpamTimer; (uint32_t)(millis() - SpamTimer) >= (t); SpamTimer = millis()) // (BLACK BOX) Ya, don't complain that I used "for(;;){}" instead of "if(){}" for my Blink Without Delay Timer macro. It works nicely!!!
-#define printfloatx(Name,Variable,Spaces,Precision,EndTxt) print(Name); {char S[(Spaces + Precision + 3)];Serial.print(F(" ")); Serial.print(dtostrf((float)Variable,Spaces,Precision ,S));}Serial.print(EndTxt);//Name,Variable,Spaces,Precision,EndTxt
+//#define printfloatx(Name,Variable,Spaces,Precision,EndTxt) print(Name); {char S[(Spaces + Precision + 3)];Serial.print(F(" ")); Serial.print(dtostrf((float)Variable,Spaces,Precision ,S));}Serial.print(EndTxt);//Name,Variable,Spaces,Precision,EndTxt
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
@@ -32,9 +32,11 @@ char pitchStr[15];
 char rollStr[15];
 char giro[30];
 
+SoftwareSerial SIM7670Serial(2, 3); // RX, TX
+
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   ss.begin(9800);
   pinMode(err1, OUTPUT);
 
@@ -46,14 +48,41 @@ void setup() {
   mpu.SetAddress(MPU6050_DEFAULT_ADDRESS);
   mpu.load_DMP_Image(OFFSETS); // Does it all for you
 #else
-  while (Serial.available() && Serial.read()); // empty buffer
-  while (!Serial.available());                 // wait for data
-  while (Serial.available() && Serial.read()); // empty buffer again
+  //while (Serial.available() && Serial.read()); // empty buffer
+  //while (!Serial.available());                 // wait for data
+  //while (Serial.available() && Serial.read()); // empty buffer again
   mpu.SetAddress(MPU6050_DEFAULT_ADDRESS);
   mpu.CalibrateMPU();
   mpu.load_DMP_Image();// Does it all for you with Calibration
 #endif
   mpu.on_FIFO(printpropio);
+
+
+  //===================    4G conexión  =================================
+  SIM7670Serial.begin(115200);
+
+  // Iniciar el servicio TCP/IP
+  sendATCommand("AT+NETOPEN");
+
+  // Configurar el modo de aplicación TCP/IP
+  sendATCommand("AT+CIPMODE=0");
+
+  // Configurar el APN (Access Point Name)
+  sendATCommand("AT+CGDCONT=1,\"LTE\",\"claro.pe\"");
+
+  // Activar la conexión GPRS
+  sendATCommand("AT+CGATT=1");
+
+  // Configurar el perfil de conexión
+  sendATCommand("AT+CSTT=\"claro.pe\",\"\",\"\"");
+
+  // Establecer el puerto de destino
+  sendATCommand("AT+UDPSERV=5000");
+
+  // Configurar la dirección IP y puerto de destino
+  sendATCommand("AT+CIPOPEN=1,\"TCP\",\"18.223.206.251\",5000");
+
+
 }
 
 
@@ -98,12 +127,16 @@ void loop() {
   sprintf(data, "LAT: %s, Lon: %s, Fecha: %s, Hora: %s, Giro: %s",
           flatStr, flonStr, fec, hor, giro);
 
-  Serial.println(data);
+  sendTCPMessage(data);
+
+  //Serial.println(data);
 
   //Serial.print(yaw);
   //Serial.print(" - ");
   //Serial.println(yaw);
-  smartdelay(1000);
+
+
+  smartdelay(4000);
 
 
 }
@@ -155,15 +188,15 @@ void printpropio(int16_t *gyro, int16_t *accel, int32_t *quat) { //, uint16_t Sp
   //    Serial.print(accel[2]);
   //    Serial.println();
 
-//  yaw = xyz[0];
-//  pitch = xyz[1];
-//  roll = xyz[2];
+  //  yaw = xyz[0];
+  //  pitch = xyz[1];
+  //  roll = xyz[2];
 
   dtostrf(xyz[0], 6, 2, yawStr);
   dtostrf(xyz[1], 6, 2, pitchStr);
   dtostrf(xyz[2], 6, 2, rollStr);
 
-   sprintf(giro, "%s,|%s,|%s",yawStr, pitchStr, rollStr);
+  sprintf(giro, "%s,|%s,|%s", yawStr, pitchStr, rollStr);
 }
 //}
 
@@ -173,4 +206,22 @@ void smartdelay(unsigned long ms) {
     while (ss.available())
       gps.encode(ss.read());
   } while (millis() - start < ms);
+}
+
+
+void sendTCPMessage(String message) {
+
+  int len = message.length();
+  sendATCommand("AT+CIPSEND=1," + String(len));
+
+  SIM7670Serial.println(message);
+
+}
+
+void sendATCommand(String cmd) {
+  SIM7670Serial.println(cmd);
+  //delay(500); // Espera 500ms para la respuesta
+  while (SIM7670Serial.available()) {
+    Serial.write(SIM7670Serial.read());
+  }
 }
