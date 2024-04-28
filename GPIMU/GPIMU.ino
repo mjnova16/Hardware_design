@@ -1,7 +1,18 @@
 #include <SoftwareSerial.h>
 #include <TinyGPS.h>
+#include <AltSoftSerial.h>
+
 TinyGPS gps;
-SoftwareSerial ss(8, 9);
+
+
+//SoftwareSerial ss(8, 9);
+
+const int RX = 8;
+const int TX = 9;
+
+AltSoftSerial ss;
+
+
 char fec[32];
 char hor[32];
 float flat, flon;
@@ -13,17 +24,12 @@ unsigned long age;
 #define MPU6050_ADDRESS_AD0_HIGH    0x69 // address pin high (VCC)
 #define MPU6050_DEFAULT_ADDRESS     MPU6050_ADDRESS_AD0_LOW
 Simple_MPU6050 mpu;
-//#define spamtimer(t) for (static uint32_t SpamTimer; (uint32_t)(millis() - SpamTimer) >= (t); SpamTimer = millis()) // (BLACK BOX) Ya, don't complain that I used "for(;;){}" instead of "if(){}" for my Blink Without Delay Timer macro. It works nicely!!!
-//#define printfloatx(Name,Variable,Spaces,Precision,EndTxt) print(Name); {char S[(Spaces + Precision + 3)];Serial.print(F(" ")); Serial.print(dtostrf((float)Variable,Spaces,Precision ,S));}Serial.print(EndTxt);//Name,Variable,Spaces,Precision,EndTxt
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
 
 int err1 = 13;
 
-float yaw;
-float pitch;
-float roll;
 
 char flatStr[15]; // Ajusta el tamaño según la longitud máxima que esperas
 char flonStr[15];
@@ -32,12 +38,13 @@ char pitchStr[15];
 char rollStr[15];
 char giro[30];
 
-SoftwareSerial SIM7670Serial(2, 3); // RX, TX
+SoftwareSerial SIM7670Serial(3, 4); // RX, TX
 
 
 void setup() {
   Serial.begin(9600);
-  ss.begin(9800);
+  ss.begin(9600);
+  ss.setTimeout(100);
   pinMode(err1, OUTPUT);
 
   //------------------------------------------------------------------
@@ -48,9 +55,6 @@ void setup() {
   mpu.SetAddress(MPU6050_DEFAULT_ADDRESS);
   mpu.load_DMP_Image(OFFSETS); // Does it all for you
 #else
-  //while (Serial.available() && Serial.read()); // empty buffer
-  //while (!Serial.available());                 // wait for data
-  //while (Serial.available() && Serial.read()); // empty buffer again
   mpu.SetAddress(MPU6050_DEFAULT_ADDRESS);
   mpu.CalibrateMPU();
   mpu.load_DMP_Image();// Does it all for you with Calibration
@@ -82,62 +86,25 @@ void setup() {
   // Configurar la dirección IP y puerto de destino
   sendATCommand("AT+CIPOPEN=1,\"TCP\",\"18.223.206.251\",5000");
 
-
 }
 
 
 void loop() {
-
-
-  //===================================================================
-  //============================  GPS GET   ===========================
-  //===================================================================
-
   gps.f_get_position(&flat, &flon, &age);
-  //  Serial.print("LAT: ");
-  //  Serial.print(flat, 6);
-  //  Serial.print("  Lon: ");
-  //  Serial.print(flon, 6);
-  //  Serial.print("  ");
   obtenerFechaHora(fec, hor);
-  //  Serial.print("Fecha: ");
-  //  Serial.print(fec);
-  //  Serial.print("Hora: ");
-  //  Serial.print(hor);
-
   char data[200];
-
-
-
-  //===================================================================
-  //============================  imu GET   ===========================
-  //===================================================================
   mpu.dmp_read_fifo(false);
-
-
-
-
 
   dtostrf(flat, 10, 6, flatStr);
   dtostrf(flon, 10, 6, flonStr);
-  //  dtostrf(yaw, 6, 2, yawStr);
-  //  dtostrf(pitch, 6, 2, pitchStr);
-  //  dtostrf(roll, 6, 2, rollStr);
 
-  sprintf(data, "LAT: %s, Lon: %s, Fecha: %s, Hora: %s, Giro: %s",
+  sprintf(data, "%s, %s, %s, %s, %s",
           flatStr, flonStr, fec, hor, giro);
 
-  sendTCPMessage(data);
 
   //Serial.println(data);
-
-  //Serial.print(yaw);
-  //Serial.print(" - ");
-  //Serial.println(yaw);
-
-
+  sendTCPMessage(data);
   smartdelay(4000);
-
 
 }
 
@@ -210,10 +177,8 @@ void smartdelay(unsigned long ms) {
 
 
 void sendTCPMessage(String message) {
-
   int len = message.length();
   sendATCommand("AT+CIPSEND=1," + String(len));
-
   SIM7670Serial.println(message);
 
 }
