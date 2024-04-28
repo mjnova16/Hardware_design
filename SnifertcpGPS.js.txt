@@ -1,0 +1,68 @@
+const net = require('net');
+
+// Crear un servidor TCP
+const server = net.createServer();
+
+// Escuchar eventos de conexión
+server.on('connection', (socket) => {
+  console.log(`Nueva conexión establecida desde ${socket.remoteAddress}:${socket.remotePort}`);
+
+  // Escuchar eventos de datos
+  socket.on('data', (data) => {
+    // Convertir los datos recibidos a una cadena
+    const message = data.toString();
+
+    // Verificar si el mensaje comienza con "$GPRMC"
+    if (message.startsWith('$GPRMC')) {
+      // Dividir el mensaje en partes utilizando la coma como separador
+      const parts = message.split(',');
+
+      // Extraer los campos relevantes
+      const time = parts[1]; // Hora en formato HHMMSS.ss
+      const latitude = parts[3]; // Latitud en formato DDMM.mmmm
+      const latitudeDir = parts[4]; // Dirección de latitud (N o S)
+      const longitude = parts[5]; // Longitud en formato DDDMM.mmmm
+      const longitudeDir = parts[6]; // Dirección de longitud (E o W)
+      const date = parts[9]; // Fecha en formato DDMMYY
+
+      // Convertir la hora a formato legible
+      const hours = time.substr(0, 2);
+      const minutes = time.substr(2, 2);
+      const seconds = time.substr(4, 2);
+      const formattedTime = `${hours}:${minutes}:${seconds}`;
+
+      // Convertir la latitud y longitud a formato legible
+      const formattedLatitude = `${latitude} ${latitudeDir}`;
+      const formattedLongitude = `${longitude} ${longitudeDir}`;
+
+      // Imprimir los datos procesados
+      console.log(`Hora: ${formattedTime}`);
+      console.log(`Fecha: ${date}`);
+      console.log(`Latitud: ${formattedLatitude}`);
+      console.log(`Longitud: ${formattedLongitude}`);
+    }
+
+    console.log(`Datos recibidos desde ${socket.remoteAddress}:${socket.remotePort}: ${message}`);
+  });
+
+  // Escuchar eventos de cierre
+  socket.on('close', () => {
+    console.log(`Conexión cerrada desde ${socket.remoteAddress}:${socket.remotePort}`);
+  });
+
+  // Manejar errores de conexión
+  socket.on('error', (err) => {
+    console.error(`Error en la conexión: ${err}`);
+  });
+});
+
+// Manejar errores del servidor
+server.on('error', (err) => {
+  console.error(`Error en el servidor: ${err}`);
+});
+
+// Iniciar el servidor y escuchar en el puerto deseado
+const PORT = 12345; // Puedes cambiar este puerto si deseas
+server.listen(PORT, () => {
+  console.log(`Servidor TCP escuchando en el puerto ${PORT}`);
+});
