@@ -3,23 +3,44 @@
 
 SoftwareSerial SIM7670Serial(3, 4); // RX, TX
 
-
-int i = 0;
-
-
-
-
 const int RX = 8;
 const int TX = 9;
-
 AltSoftSerial gpsSerial;
 
+//----------------------------------------------------------------------------------------------------------------------------------
+#include "Simple_MPU6050.h"
+#define MPU6050_ADDRESS_AD0_LOW     0x68 // address pin low (GND), default for InvenSense evaluation board
+#define MPU6050_ADDRESS_AD0_HIGH    0x69 // address pin high (VCC)
+#define MPU6050_DEFAULT_ADDRESS     MPU6050_ADDRESS_AD0_LOW
+Simple_MPU6050 mpu;
 
+//----------------------------------------------------------------------------------------------------------------------------------
+
+char yawStr[15];
+char pitchStr[15];
+char rollStr[15];
+char giro[30];
 
 void setup() {
   Serial.begin(9600);
   gpsSerial.begin(9600);
   gpsSerial.setTimeout(100);
+
+  //------------------------------------------------------------------
+  mpu.begin();
+  mpu.Set_DMP_Output_Rate_Hz(100);           // Set the DMP output rate from 200Hz to 5 Minutes.
+
+#ifdef OFFSETS
+  mpu.SetAddress(MPU6050_DEFAULT_ADDRESS);
+  mpu.load_DMP_Image(OFFSETS); // Does it all for you
+#else
+  mpu.SetAddress(MPU6050_DEFAULT_ADDRESS);
+  mpu.CalibrateMPU();
+  mpu.load_DMP_Image();// Does it all for you with Calibration
+#endif
+  mpu.on_FIFO(printpropio);
+
+  //-------------------------------------------------------------
   SIM7670Serial.begin(115200);
 
 
@@ -47,20 +68,7 @@ void setup() {
 }
 
 void loop() {
-  // Envía el mensaje TCP
-
-  //  sprintf(mensajito, "Hola Mensaje #%i", i);
-  //
-  //  sendTCPMessage(mensajito);
-  //  Serial.print("Mensaje #");
-  //  Serial.print(i);
-  //  Serial.println(" enviado");
-  //
-  //  delay(2000); // Espera 5 segundos antes de enviar el siguiente mensaje
-  //  i = i + 1;
-
-
-  //=================================================================0
+  mpu.dmp_read_fifo(false);
 
   static String currentSentence;
 
@@ -71,8 +79,19 @@ void loop() {
       if (currentSentence.startsWith("$GPRMC")) {
         // Procesa la sentencia $GPRMC
         //String mensaje = processGPRMC(currentSentence);
+
+
+        char data[200];
+        char coordenadas[50];
+
+        //strcpy(coordenadas, currentSentence.c_str());
+
+        currentSentence.toCharArray(coordenadas,50);
+        //sprintf(data, "%s %s", coordenadas, giro);
         sendTCPMessage(currentSentence);
-        Serial.println(currentSentence);
+        
+        Serial.println(giro);
+
 
       }
       currentSentence = "$";
@@ -80,8 +99,8 @@ void loop() {
       currentSentence += data;
     }
   }
-
-  delay(4000);
+sendTCPMessage(giro);
+  //delay(4000);
 }
 
 void sendTCPMessage(String message) {
@@ -97,4 +116,21 @@ void sendATCommand(String cmd) {
   while (SIM7670Serial.available()) {
     Serial.write(SIM7670Serial.read());
   }
+}
+
+void printpropio(int16_t *gyro, int16_t *accel, int32_t *quat) { //, uint16_t SpamDelay = 100) {
+  Quaternion q;
+  VectorFloat gravity;
+  float ypr[3] = { 0, 0, 0 };
+  float xyz[3] = { 0, 0, 0 };
+  mpu.GetQuaternion(&q, quat);
+  mpu.GetGravity(&gravity, &q);
+  mpu.GetYawPitchRoll(ypr, &q, &gravity);
+  mpu.ConvertToDegrees(ypr, xyz);
+
+  dtostrf(xyz[0], 6, 2, yawStr);
+  dtostrf(xyz[1], 6, 2, pitchStr);
+  dtostrf(xyz[2], 6, 2, rollStr);
+
+  sprintf(giro, "%s,|%s,|%s", yawStr, pitchStr, rollStr);
 }
