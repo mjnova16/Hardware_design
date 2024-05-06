@@ -13,13 +13,16 @@ AltSoftSerial gpsSerial;
 #define MPU6050_ADDRESS_AD0_HIGH    0x69 // address pin high (VCC)
 #define MPU6050_DEFAULT_ADDRESS     MPU6050_ADDRESS_AD0_LOW
 Simple_MPU6050 mpu;
-
+#define OFFSETS  -3632,    -160,     498,     101,     -73,      -1
 //----------------------------------------------------------------------------------------------------------------------------------
 
 char yawStr[15];
 char pitchStr[15];
 char rollStr[15];
 char giro[30];
+char dato[200];
+
+char coordenadas[100];
 
 void setup() {
   Serial.begin(9600);
@@ -77,30 +80,35 @@ void loop() {
 
     if (data == '$') {
       if (currentSentence.startsWith("$GPRMC")) {
-        // Procesa la sentencia $GPRMC
-        //String mensaje = processGPRMC(currentSentence);
 
+        currentSentence.toCharArray(coordenadas, 100);
+        //Serial.println(currentSentence);
+        int len = strlen(coordenadas);
 
-        char data[200];
-        char coordenadas[50];
+        // Verificar si la cadena tiene al menos dos caracteres
+        if (len >= 2) {
+          // Eliminar los dos últimos caracteres
+          coordenadas[len - 2] = '\0';
+        }
+        sprintf(dato, "%s ,%s", coordenadas, giro);
 
-        //strcpy(coordenadas, currentSentence.c_str());
-
-        currentSentence.toCharArray(coordenadas,50);
-        //sprintf(data, "%s %s", coordenadas, giro);
-        sendTCPMessage(currentSentence);
-        
-        Serial.println(giro);
-
+        Serial.println(dato);
+        sendTCPMessage(dato);
 
       }
       currentSentence = "$";
     } else {
       currentSentence += data;
     }
+
+
+
   }
-sendTCPMessage(giro);
-  //delay(4000);
+
+
+
+
+  delay(1000);
 }
 
 void sendTCPMessage(String message) {
@@ -132,5 +140,5 @@ void printpropio(int16_t *gyro, int16_t *accel, int32_t *quat) { //, uint16_t Sp
   dtostrf(xyz[1], 6, 2, pitchStr);
   dtostrf(xyz[2], 6, 2, rollStr);
 
-  sprintf(giro, "%s,|%s,|%s", yawStr, pitchStr, rollStr);
+  sprintf(giro, "%s,%s,%s", yawStr, pitchStr, rollStr);
 }

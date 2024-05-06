@@ -2,7 +2,7 @@
 #include <TinyGPS.h>
 
 TinyGPS gps;
-SoftwareSerial ss(8, 9);
+SoftwareSerial ss(7, 6);
 
 char fec[32];
 char hor[32];
