@@ -1,16 +1,8 @@
-#include <SoftwareSerial.h>
+
 #include <TinyGPS.h>
-#include <AltSoftSerial.h>
+
 
 TinyGPS gps;
-
-
-//SoftwareSerial ss(8, 9);
-
-const int RX = 8;
-const int TX = 9;
-
-AltSoftSerial ss;
 
 
 char fec[32];
@@ -20,9 +12,9 @@ unsigned long age;
 
 //----------------------------------------------------------------------------------------------------------------------------------
 #include "Simple_MPU6050.h"
-#define MPU6050_ADDRESS_AD0_LOW     0x68 // address pin low (GND), default for InvenSense evaluation board
-#define MPU6050_ADDRESS_AD0_HIGH    0x69 // address pin high (VCC)
-#define MPU6050_DEFAULT_ADDRESS     MPU6050_ADDRESS_AD0_LOW
+#define MPU6050_ADDRESerial3_AD0_LOW     0x68 // addreSerial3 pin low (GND), default for InvenSense evaluation board
+#define MPU6050_ADDRESerial3_AD0_HIGH    0x69 // addreSerial3 pin high (VCC)
+#define MPU6050_DEFAULT_ADDRESerial3     MPU6050_ADDRESerial3_AD0_LOW
 Simple_MPU6050 mpu;
 
 //----------------------------------------------------------------------------------------------------------------------------------
@@ -38,13 +30,13 @@ char pitchStr[15];
 char rollStr[15];
 char giro[30];
 
-SoftwareSerial SIM7670Serial(3, 4); // RX, TX
+//SoftwareSerial Serial2(3, 4); // RX, TX
 
 
 void setup() {
   Serial.begin(9600);
-  ss.begin(9600);
-  ss.setTimeout(100);
+  Serial3.begin(9600);
+  //Serial3.setTimeout(100);
   pinMode(err1, OUTPUT);
 
   //------------------------------------------------------------------
@@ -52,10 +44,10 @@ void setup() {
   mpu.Set_DMP_Output_Rate_Hz(100);           // Set the DMP output rate from 200Hz to 5 Minutes.
 
 #ifdef OFFSETS
-  mpu.SetAddress(MPU6050_DEFAULT_ADDRESS);
+  mpu.SetAddreSerial3(MPU6050_DEFAULT_ADDRESerial3);
   mpu.load_DMP_Image(OFFSETS); // Does it all for you
 #else
-  mpu.SetAddress(MPU6050_DEFAULT_ADDRESS);
+  mpu.SetAddress(MPU6050_DEFAULT_ADDRESerial3);
   mpu.CalibrateMPU();
   mpu.load_DMP_Image();// Does it all for you with Calibration
 #endif
@@ -63,7 +55,7 @@ void setup() {
 
 
   //===================    4G conexión  =================================
-  SIM7670Serial.begin(115200);
+  Serial2.begin(115200);
 
   // Iniciar el servicio TCP/IP
   sendATCommand("AT+NETOPEN");
@@ -71,7 +63,7 @@ void setup() {
   // Configurar el modo de aplicación TCP/IP
   sendATCommand("AT+CIPMODE=0");
 
-  // Configurar el APN (Access Point Name)
+  // Configurar el APN (AcceSerial3 Point Name)
   sendATCommand("AT+CGDCONT=1,\"LTE\",\"claro.pe\"");
 
   // Activar la conexión GPRS
@@ -102,9 +94,9 @@ void loop() {
           flatStr, flonStr, fec, hor, giro);
 
 
-  //Serial.println(data);
-  sendTCPMessage(data);
-  smartdelay(4000);
+  Serial.println(data);
+ sendTCPMessage(data);
+ smartdelay(1000);
 
 }
 
@@ -170,8 +162,8 @@ void printpropio(int16_t *gyro, int16_t *accel, int32_t *quat) { //, uint16_t Sp
 void smartdelay(unsigned long ms) {
   unsigned long start = millis();
   do {
-    while (ss.available())
-      gps.encode(ss.read());
+    while (Serial3.available())
+      gps.encode(Serial3.read());
   } while (millis() - start < ms);
 }
 
@@ -179,14 +171,14 @@ void smartdelay(unsigned long ms) {
 void sendTCPMessage(String message) {
   int len = message.length();
   sendATCommand("AT+CIPSEND=1," + String(len));
-  SIM7670Serial.println(message);
+  Serial2.println(message);
 
 }
 
 void sendATCommand(String cmd) {
-  SIM7670Serial.println(cmd);
+  Serial2.println(cmd);
   //delay(500); // Espera 500ms para la respuesta
-  while (SIM7670Serial.available()) {
-    Serial.write(SIM7670Serial.read());
+  while (Serial2.available()) {
+    Serial.write(Serial2.read());
   }
 }
