@@ -90,13 +90,13 @@ void loop() {
   dtostrf(flat, 10, 6, flatStr);
   dtostrf(flon, 10, 6, flonStr);
 
-  sprintf(data, "%s, %s, %s, %s, %s",
+  sprintf(data, "%s,%s,%s,%s|%s|",
           flatStr, flonStr, fec, hor, giro);
 
 
-  Serial.println(data);
- sendTCPMessage(data);
- smartdelay(1000);
+   Serial.println(data);
+  sendTCPMessage(data);
+  smartdelay(2000);
 
 }
 
@@ -140,12 +140,12 @@ void printpropio(int16_t *gyro, int16_t *accel, int32_t *quat) { //, uint16_t Sp
   //    Serial.print(",");
   //    Serial.print(xyz[2], 4);
   //    Serial.print("  ;   ");
-  //    Serial.print(accel[0]);
-  //    Serial.print(",");
-  //    Serial.print(accel[1]);
-  //    Serial.print(",");
-  //    Serial.print(accel[2]);
-  //    Serial.println();
+//  Serial.print(accel[0]);
+//  Serial.print(",");
+//  Serial.print(accel[1]);
+//  Serial.print(",");
+//  Serial.print(accel[2]);
+//  Serial.println();
 
   //  yaw = xyz[0];
   //  pitch = xyz[1];
@@ -155,7 +155,7 @@ void printpropio(int16_t *gyro, int16_t *accel, int32_t *quat) { //, uint16_t Sp
   dtostrf(xyz[1], 6, 2, pitchStr);
   dtostrf(xyz[2], 6, 2, rollStr);
 
-  sprintf(giro, "%s,|%s,|%s", yawStr, pitchStr, rollStr);
+  sprintf(giro, "%s,%s,%s", yawStr, pitchStr, rollStr);
 }
 //}
 
